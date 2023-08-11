@@ -1,0 +1,76 @@
+#!/usr/bin/env python3
+
+from secrets import choice
+from secrets import randbelow
+from sys import argv
+from sys import stderr
+
+# Captures input from the console and passes it along as a dictionary of desired parameters
+def process_console_args() -> dict:
+    argv.pop(0)
+    params = { '-w' : 4, '-c' : 0, '-n' : 0, '-s' : 0 }
+    while argv:
+        arg = argv.pop(0)
+        if arg == '-h' or arg == '--help':
+            print('show this help message and exit')
+            exit()
+        elif arg in {'-w', '-c', '-n', '-s', '--words', '--caps', '--numbers', '--symbols'}:
+            arg = arg[1:3] if len(arg) != 2 else arg
+            params[arg] = int(argv.pop(0))
+        else:
+            print('Invalid Argument for Password Generation: ' + arg, file=stderr)
+    return params
+
+# Selects a random set of words from 'words.txt' and capitalizes a random subset if applicable
+def pick_words(word_count: int, cap_count: int) -> list:
+    pword_indices = set()
+    pwords = set()
+    capital_indices = set()
+    # -- passthrough to find number of lines
+    with open('words.txt', 'r') as word_file:
+        for count, _ in enumerate(word_file) : pass
+    while len(pword_indices) < word_count : pword_indices.add(randbelow(count + 1))
+    while len(capital_indices) < cap_count : capital_indices.add(choice(tuple(pword_indices)))
+    # -- passthrough to nab the desired lines
+    with open('words.txt', 'r') as word_file:
+        for index, line in enumerate(word_file):
+            if index in pword_indices:
+                pwords.add(
+                    line[0].upper() + line[1:].strip() if index in capital_indices else line.strip().lower()
+                    )
+    ordered_pwords = []
+    while pwords:
+        item = choice(tuple(pwords))
+        pwords.remove(item)
+        ordered_pwords.append(item)
+    return ordered_pwords
+
+# Selects random buckets of numbers and symbols if applicable
+def pick_extras(bin_count: int, num_count: int, symbol_count: int) -> list:
+    spots = [ '' for i in range(bin_count) ]
+    num_options = '0123456789'
+    symbol_options = '~!@#$%^&*.:;'
+    for _ in range(num_count) : spots[randbelow(bin_count)] += choice(num_options)
+    for _ in range(symbol_count) : spots[randbelow(bin_count)] += choice(symbol_options)
+    return spots
+
+# Creates and prints a random password adhering to the user-supplied parameters
+def generate_password(params: dict) -> None:
+    pwords = pick_words(params['-w'], params['-c'])
+    pextras = pick_extras(params['-w'] + 1, params['-n'], params['-s'])
+    res = ''
+    curr = pextras
+    while pextras:
+        res += curr.pop(0)
+        curr = pwords if curr == pextras else pextras
+    print(res)
+    return
+
+# Driver function for processing console args and generating/printing a password
+def main():
+    password_gen_params = process_console_args()
+    generate_password(password_gen_params)
+
+# Main bit
+if __name__ == '__main__':
+    main()
